@@ -32,7 +32,7 @@ import {
 import { differenceInMinutes } from "date-fns";
 import { getScopedSettings } from "shared/settings";
 import uniq from "lodash/uniq";
-import { pick, omit } from "lodash";
+import { pick, omit, mapValues } from "lodash";
 import {
   LegacyExperimentReportArgs,
   ExperimentSnapshotReportInterface,
@@ -64,6 +64,7 @@ import { DataSourceInterface } from "shared/types/datasource";
 import { ProjectInterface } from "shared/types/project";
 import { accountFeatures, CommercialFeature } from "shared/enterprise";
 import { buildAnalysisKey } from "shared/snapshot-analysis-chunks";
+import { redactFactTableForPublic } from "back-end/src/util/factTable";
 import { generateId } from "back-end/src/util/uuid";
 import { getMetricsByIds } from "back-end/src/models/MetricModel";
 import { ReqContext } from "back-end/types/request";
@@ -805,6 +806,10 @@ export async function generateExperimentReportSSRData({
           "timestampColumn",
           "conditions",
           "queryFormat",
+          "sql",
+          "userIdColumns",
+          "templateVariables",
+          "aggregation",
         ]),
       }),
     {},
@@ -958,7 +963,7 @@ export async function generateExperimentReportSSRData({
   return {
     metrics: metricMap,
     metricGroups,
-    factTables: factTableMap,
+    factTables: mapValues(factTableMap, redactFactTableForPublic),
     factMetricSlices,
     settings: orgSettings,
     projects: projectMap,

@@ -1,4 +1,8 @@
-import { ColumnInterface, UpdateColumnProps } from "shared/types/fact-table";
+import {
+  ColumnInterface,
+  FactTableInterface,
+  UpdateColumnProps,
+} from "shared/types/fact-table";
 import {
   DataSourceInterface,
   GrowthbookClickhouseDataSource,
@@ -15,6 +19,7 @@ import {
   stripIncompatibleFields,
   detectColumnsFromQueryResult,
   buildColumnTypeMaps,
+  redactFactTableForPublic,
 } from "back-end/src/util/factTable";
 import { mergeUpsertColumns } from "back-end/src/models/FactTableModel";
 
@@ -758,5 +763,57 @@ describe("buildColumnTypeMaps", () => {
     });
 
     expect([...datatypes]).toEqual([["revenue", "number"]]);
+  });
+});
+
+describe("redactFactTableForPublic", () => {
+  it("removes SQL, filter SQL, event name and JSON fields", () => {
+    const factTable: FactTableInterface = {
+      organization: "org_1",
+      id: "ft_1",
+      dateCreated: null,
+      dateUpdated: null,
+      name: "Orders",
+      description: "",
+      owner: "",
+      projects: [],
+      tags: [],
+      datasource: "ds_1",
+      userIdTypes: ["user_id"],
+      userIdColumns: { user_id: "uid" },
+      sql: "SELECT secret FROM prod.internal",
+      eventName: "purchase",
+      columns: [
+        {
+          column: "payload",
+          name: "payload",
+          description: "",
+          numberFormat: "",
+          datatype: "json",
+          dateCreated: null,
+          dateUpdated: null,
+          jsonFields: { a: { datatype: "string" } },
+        },
+      ],
+      filters: [
+        {
+          id: "flt_1",
+          name: "Region",
+          description: "",
+          value: "region='SECRET'",
+          dateCreated: null,
+          dateUpdated: null,
+        },
+      ],
+    };
+
+    const result = redactFactTableForPublic(factTable);
+
+    expect(JSON.stringify(result)).not.toMatch(/SECRET|internal|purchase/);
+    expect(result).not.toHaveProperty("sql");
+    expect(result.columns[0]).not.toHaveProperty("jsonFields");
+    expect(result.filters[0].name).toBe("Region");
+    expect(result.id).toBe("ft_1");
+    expect(factTable.sql).toBe("SELECT secret FROM prod.internal");
   });
 });

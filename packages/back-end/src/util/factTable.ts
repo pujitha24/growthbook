@@ -1,3 +1,4 @@
+import { omit } from "lodash";
 import { set, subDays, addDays } from "date-fns";
 import { utcToZonedTime, zonedTimeToUtc } from "date-fns-tz";
 import { validateVirtualColumnExpression } from "shared/experiments";
@@ -7,6 +8,7 @@ import {
   CreateColumnProps,
   DetectedFactTableColumn,
   FactTableColumnType,
+  FactTableDefinition,
   FactTableInterface,
   JSONColumnFields,
 } from "shared/types/fact-table";
@@ -16,6 +18,22 @@ import {
   type DetectedJSONFields,
   determineColumnTypes,
 } from "back-end/src/util/sql";
+
+/**
+ * Strips the warehouse SQL, filter SQL, event name and JSON sub-field maps
+ * from a fact table so it is safe to embed in publicly shared report payloads.
+ */
+export function redactFactTableForPublic(
+  factTable: FactTableInterface,
+): FactTableDefinition {
+  return {
+    ...omit(factTable, ["sql"]),
+    eventName: "",
+    userIdColumns: undefined,
+    columns: factTable.columns.map((column) => omit(column, ["jsonFields"])),
+    filters: factTable.filters.map((filter) => ({ ...filter, value: "" })),
+  };
+}
 
 /**
  * Clears datatype-incompatible props. Empty datatype skips checks while
